@@ -1,0 +1,6 @@
+{
+  "name": "Forja Industrial — ERP de Planejamento e Produção",
+  "description": "Sistema integrado de planejamento e gestão de produção para pequenas indústrias, incluindo fichas técnicas, matérias-primas, clientes, fornecedores, capacidade produtiva, pedidos, ordens de produção e relatórios técnicos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
