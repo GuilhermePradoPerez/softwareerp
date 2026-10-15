@@ -107,10 +107,25 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
     return data as ErpState;
   };
 
+  // Helper to generate next unique code with prefix
+  const getNextAvailableCode = (prefix: string, existingCodes: string[], startPad = 3, startNum = 1) => {
+    let maxNum = 0;
+    const regex = new RegExp(`^${prefix}-(\\d+)$`);
+    for (const c of existingCodes) {
+      const m = c.match(regex);
+      if (m && m[1]) {
+        const val = parseInt(m[1], 10);
+        if (!isNaN(val) && val > maxNum) maxNum = val;
+      }
+    }
+    const nextVal = Math.max(maxNum + 1, startNum);
+    return `${prefix}-${String(nextVal).padStart(startPad, '0')}`;
+  };
+
   // --- Handlers: Ficha Técnica ---
   const resetProdForm = () => {
     setEditingProductId(null);
-    const nextCode = `PRD-00${state.products.length + 1}`;
+    const nextCode = getNextAvailableCode('PRD', state.products.map((p) => p.code), 3, state.products.length + 1);
     setProdForm({
       code: nextCode,
       name: '',
@@ -178,7 +193,7 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
   const resetMatForm = () => {
     setEditingMaterialId(null);
     setMatForm({
-      code: `MP-10${state.rawMaterials.length + 1}`,
+      code: getNextAvailableCode('MP', state.rawMaterials.map((m) => m.code), 3, 101),
       name: '',
       unit: 'kg',
       current_stock: 0,
@@ -246,7 +261,7 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
   const resetCustForm = () => {
     setEditingCustomerId(null);
     setCustForm({
-      code: `CLI-00${state.customers.length + 1}`,
+      code: getNextAvailableCode('CLI', state.customers.map((c) => c.code), 3, state.customers.length + 1),
       name: '',
       document: '',
       contact_person: '',
@@ -299,7 +314,7 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
   const resetSupForm = () => {
     setEditingSupplierId(null);
     setSupForm({
-      code: `FOR-00${state.suppliers.length + 1}`,
+      code: getNextAvailableCode('FOR', state.suppliers.map((s) => s.code), 3, state.suppliers.length + 1),
       name: '',
       cnpj: '',
       contact_person: '',
@@ -351,8 +366,15 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
   // --- Handlers: Capacidade Produtiva ---
   const resetCapForm = () => {
     setEditingCapacityId(null);
+    let nextMonth = 10 + state.capacities.length;
+    let codeCandidate = `CAP-2026-${nextMonth}`;
+    const existing = new Set(state.capacities.map((c) => c.period_code));
+    while (existing.has(codeCandidate)) {
+      nextMonth++;
+      codeCandidate = `CAP-2026-${nextMonth}`;
+    }
     setCapForm({
-      period_code: `CAP-2026-${10 + state.capacities.length}`,
+      period_code: codeCandidate,
       period_label: '',
       work_center: 'Usinagem CNC & Montagem Pesada',
       shifts_per_day: 1,

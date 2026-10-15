@@ -1,6 +1,7 @@
 import React from 'react';
 import { Printer, ArrowRight, Play, CheckCircle2, FilePlus2 } from 'lucide-react';
 import { ErpState, User, ProductionOrder, Order } from '../types';
+import { formatDate } from '../utils/formatters';
 
 interface PainelViewProps {
   state: ErpState;
@@ -70,12 +71,6 @@ export const PainelView: React.FC<PainelViewProps> = ({
     } catch (err: any) {
       notify(err.message, 'error');
     }
-  };
-
-  const formatDate = (dStr?: string | null) => {
-    if (!dStr) return '—';
-    const [y, m, d] = dStr.slice(0, 10).split('-');
-    return d && m && y ? `${d}/${m}/${y}` : dStr;
   };
 
   return (

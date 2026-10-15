@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Printer } from 'lucide-react';
 import { ErpState, User, ProductionOrder } from '../types';
+import { formatDate } from '../utils/formatters';
 
 interface RelatoriosViewProps {
   state: ErpState;
@@ -44,21 +45,6 @@ export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
       return op.status === 'PLANEJADA' || op.status === 'EM_PROCESSO' || op.status === 'PAUSADA';
     return true;
   });
-
-  const formatDate = (dStr?: string | null) => {
-    if (!dStr) return '—';
-    if (dStr.includes('T')) {
-      return new Date(dStr).toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    }
-    const [y, m, d] = dStr.split('-');
-    return d && m && y ? `${d}/${m}/${y}` : dStr;
-  };
 
   return (
     <div className="space-y-6">

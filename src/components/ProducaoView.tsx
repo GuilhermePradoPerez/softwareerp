@@ -10,6 +10,7 @@ import {
   Search,
 } from 'lucide-react';
 import { ErpState, User, OrderItem, ProductionOrder, Order } from '../types';
+import { formatDate } from '../utils/formatters';
 
 interface ProducaoViewProps {
   state: ErpState;
@@ -102,9 +103,19 @@ export const ProducaoView: React.FC<ProducaoViewProps> = ({
           ? 'Pedido registrado e Ordens de Produção emitidas automaticamente!'
           : 'Pedido de cliente cadastrado com sucesso.'
       );
+      let maxOrderNum = 100;
+      for (const o of newState.orders) {
+        const m = o.order_number.match(/PED-\d{4}-(\d+)/);
+        if (m && m[1]) {
+          const val = parseInt(m[1], 10);
+          if (!isNaN(val) && val > maxOrderNum) maxOrderNum = val;
+        }
+      }
+      const nextOrderNum = Math.max(maxOrderNum + 1, 100 + newState.orders.length + 1);
+
       setOrderForm({
         ...orderForm,
-        order_number: `PED-2026-010${newState.orders.length + 1}`,
+        order_number: `PED-2026-${String(nextOrderNum).padStart(4, '0')}`,
         notes: '',
       });
       setOrderItems([
@@ -180,6 +191,21 @@ export const ProducaoView: React.FC<ProducaoViewProps> = ({
     }
   };
 
+  const handleCancelOp = async (op: ProductionOrder) => {
+    try {
+      const newState = await apiCall(`/api/production-orders/${op.id}/status`, 'PATCH', {
+        status: 'CANCELADA',
+        current_stage: 'Ordem Cancelada pelo Responsável Técnico',
+        technical_responsible: currentUser.name,
+        technical_crea: currentUser.crea_registro,
+      });
+      onRefreshState(newState);
+      notify(`Ordem ${op.op_number} foi cancelada.`);
+    } catch (err: any) {
+      notify(err.message, 'error');
+    }
+  };
+
   const openBaixaModal = (op: ProductionOrder) => {
     setBaixaOp(op);
     setBaixaForm({
@@ -242,19 +268,7 @@ export const ProducaoView: React.FC<ProducaoViewProps> = ({
     return matchesStatus && matchesSearch;
   });
 
-  const formatDate = (dStr?: string | null) => {
-    if (!dStr) return '—';
-    if (dStr.includes('T')) {
-      return new Date(dStr).toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    }
-    const [y, m, d] = dStr.split('-');
-    return d && m && y ? `${d}/${m}/${y}` : dStr;
-  };
+
 
   return (
     <div className="space-y-6">
@@ -464,12 +478,21 @@ export const ProducaoView: React.FC<ProducaoViewProps> = ({
                       )}
 
                       {!isCompleted && op.status !== 'CANCELADA' && (
-                        <button
-                          onClick={() => openBaixaModal(op)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-white rounded-md transition-colors cursor-pointer"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Dar Baixa (Concluir OP)
-                        </button>
+                        <>
+                          <button
+                            onClick={() => openBaixaModal(op)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-white rounded-md transition-colors cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Dar Baixa (Concluir OP)
+                          </button>
+                          <button
+                            onClick={() => handleCancelOp(op)}
+                            className="px-2 py-1.5 text-xs font-medium text-slate-500 hover:text-red-700 hover:bg-red-50 border border-slate-200 rounded-md transition-colors cursor-pointer"
+                            title="Cancelar Ordem"
+                          >
+                            Cancelar
+                          </button>
+                        </>
                       )}
 
                       <button

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Printer, X, CheckSquare } from 'lucide-react';
 import { ProductionOrder, User } from '../types';
+import { formatDate } from '../utils/formatters';
 
 interface PrintableOPModalProps {
   op: ProductionOrder | null;
@@ -13,21 +14,6 @@ export const PrintableOPModal: React.FC<PrintableOPModalProps> = ({ op, currentU
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const formatDate = (dateStr?: string | null) => {
-    if (!dateStr) return '—';
-    if (dateStr.includes('T')) {
-      return new Date(dateStr).toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    }
-    const [y, m, d] = dateStr.split('-');
-    return d && m && y ? `${d}/${m}/${y}` : dateStr;
   };
 
   const statusLabel: Record<string, string> = {

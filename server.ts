@@ -172,6 +172,38 @@ function hashPassword(password: string): string {
   return crypto.createHash('sha256').update(password + '_forja_salt').digest('hex');
 }
 
+function getNextOpNumber(): string {
+  const allOps = db.prepare('SELECT op_number FROM production_orders').all() as { op_number: string }[];
+  let maxSeq = 0;
+  for (const row of allOps) {
+    const match = row.op_number.match(/OP-\d{4}-(\d+)/);
+    if (match && match[1]) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
+  }
+  const nextSeq = Math.max(maxSeq + 1, allOps.length + 1);
+  return `OP-2026-${String(nextSeq).padStart(3, '0')}`;
+}
+
+function getNextOrderNumber(): string {
+  const allOrders = db.prepare('SELECT order_number FROM orders').all() as { order_number: string }[];
+  let maxSeq = 100;
+  for (const row of allOrders) {
+    const match = row.order_number.match(/PED-\d{4}-(\d+)/);
+    if (match && match[1]) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
+  }
+  const nextSeq = Math.max(maxSeq + 1, 100 + allOrders.length + 1);
+  return `PED-2026-${String(nextSeq).padStart(4, '0')}`;
+}
+
 // Seed initial realistic Brazilian SME manufacturing data if empty
 function seedInitialData() {
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
@@ -580,6 +612,18 @@ app.get('/api/state', (_req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error fetching state:', error);
     res.status(500).json({ error: error.message || 'Erro ao carregar dados do banco relacional.' });
+  }
+});
+
+// Next sequence codes for UI suggestions
+app.get('/api/next-numbers', (_req: Request, res: Response) => {
+  try {
+    res.json({
+      nextOpNumber: getNextOpNumber(),
+      nextOrderNumber: getNextOrderNumber(),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -1080,12 +1124,11 @@ app.post('/api/orders', (req: Request, res: Response) => {
         insertItem.run(orderId, Number(item.product_id), Number(item.quantity), price);
 
         if (auto_generate_ops && prod) {
-          const maxOpRow = db.prepare('SELECT COUNT(*) as cnt FROM production_orders').get() as { cnt: number };
-          const nextNum = String(maxOpRow.cnt + 1).padStart(3, '0');
-          const opNumber = `OP-2026-${nextNum}`;
+          const opNumber = getNextOpNumber();
+          const nextSeqCode = opNumber.replace('OP-2026-', '');
           const qty = Number(item.quantity);
           const plannedTotal = qty * prod.process_time_minutes + prod.setup_time_minutes;
-          const batchCode = `LT-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${nextNum}`;
+          const batchCode = `LT-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${nextSeqCode}`;
 
           db.prepare(`
             INSERT INTO production_orders (
@@ -1149,12 +1192,11 @@ app.post('/api/orders/:id/generate-ops', (req: Request, res: Response) => {
         const prod = db.prepare('SELECT * FROM products WHERE id = ?').get(item.product_id) as any;
         if (!prod) continue;
 
-        const maxOpRow = db.prepare('SELECT COUNT(*) as cnt FROM production_orders').get() as { cnt: number };
-        const nextNum = String(maxOpRow.cnt + 1).padStart(3, '0');
-        const opNumber = `OP-2026-${nextNum}`;
+        const opNumber = getNextOpNumber();
+        const nextSeqCode = opNumber.replace('OP-2026-', '');
         const qty = Number(item.quantity);
         const plannedTotal = qty * prod.process_time_minutes + prod.setup_time_minutes;
-        const batchCode = `LT-${now.slice(2, 10).replace(/-/g, '')}-${nextNum}`;
+        const batchCode = `LT-${now.slice(2, 10).replace(/-/g, '')}-${nextSeqCode}`;
 
         db.prepare(`
           INSERT INTO production_orders (
@@ -1217,14 +1259,13 @@ app.post('/api/production-orders', (req: Request, res: Response) => {
     const prod = db.prepare('SELECT * FROM products WHERE id = ?').get(Number(product_id)) as any;
     if (!prod) return res.status(404).json({ error: 'Ficha técnica do produto não encontrada.' });
 
-    const maxOpRow = db.prepare('SELECT COUNT(*) as cnt FROM production_orders').get() as { cnt: number };
-    const nextNum = String(maxOpRow.cnt + 1).padStart(3, '0');
-    const opNumber = `OP-2026-${nextNum}`;
+    const opNumber = getNextOpNumber();
+    const nextSeqCode = opNumber.replace('OP-2026-', '');
     const qty = Number(quantity);
     // Automatic recording of process time based on Product Technical Sheet
     const plannedTotal = qty * prod.process_time_minutes + prod.setup_time_minutes;
     const now = new Date().toISOString();
-    const batchCode = `LT-${now.slice(2, 10).replace(/-/g, '')}-${nextNum}`;
+    const batchCode = `LT-${now.slice(2, 10).replace(/-/g, '')}-${nextSeqCode}`;
 
     db.prepare(`
       INSERT INTO production_orders (
